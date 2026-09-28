@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "vui101/sample-ci-app"
-        DEPLOYMENT_FILE = "k8s/deployment.yaml"
+        DEPLOYMENT_FILE = "jenkins-ci-lab/k8s/deployment.yaml"
     }
 
     stages {
@@ -33,7 +33,7 @@ pipeline {
                     }
 
                     def files = changedFiles.split('\n').collect { it.trim() }.findAll { it }
-                    def onlyK8sChanged = !files.isEmpty() && files.every { it.startsWith('k8s/') }
+                    def onlyK8sChanged = !files.isEmpty() && files.every { it.startsWith('jenkins-ci-lab/k8s/') }
 
                     if (onlyK8sChanged) {
                         currentBuild.description = "Skipped k8s-only commit"
@@ -63,7 +63,7 @@ pipeline {
                         sh '''
                             docker build \
                               -t ${DOCKER_IMAGE}:${BUILD_NUMBER} \
-                              -t ${DOCKER_IMAGE}:latest .
+                              -t ${DOCKER_IMAGE}:latest jenkins-ci-lab
                         '''
                     }
 
