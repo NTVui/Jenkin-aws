@@ -55,7 +55,7 @@ pipeline {
                     stage('Install dependencies') {
                         sh '''
                             docker run --rm \
-                              -v "$WORKSPACE":/app \
+                              -v "$WORKSPACE/jenkins-ci-lab":/app \
                               -w /app \
                               node:20-alpine npm install
                         '''
@@ -64,7 +64,7 @@ pipeline {
                     stage('Test') {
                         sh '''
                             docker run --rm \
-                              -v "$WORKSPACE":/app \
+                              -v "$WORKSPACE/jenkins-ci-lab":/app \
                               -w /app \
                               node:20-alpine npm test
                         '''
