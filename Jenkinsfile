@@ -20,15 +20,8 @@ pipeline {
         stage('CI/CD Pipeline') {
             steps {
                 script {
-                    def commitMessage = sh(
-                        script: 'git log -1 --pretty=%B',
-                        returnStdout: true
-                    ).trim()
-
-                    def changedFiles = sh(
-                        script: 'git show --pretty="" --name-only HEAD',
-                        returnStdout: true
-                    ).trim()
+                    def commitMessage = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    def changedFiles = sh(script: 'git show --pretty="" --name-only HEAD', returnStdout: true).trim()
 
                     echo "Commit message: ${commitMessage}"
                     echo "Changed files: ${changedFiles}"
@@ -39,12 +32,8 @@ pipeline {
                         return
                     }
 
-                    def files = changedFiles.split('\n')
-                        .collect { it.trim() }
-                        .findAll { it }
-
-                    def onlyK8sChanged = !files.isEmpty() &&
-                        files.every { it.startsWith('k8s/') }
+                    def files = changedFiles.split('\n').collect { it.trim() }.findAll { it }
+                    def onlyK8sChanged = !files.isEmpty() && files.every { it.startsWith('k8s/') }
 
                     if (onlyK8sChanged) {
                         currentBuild.description = "Skipped k8s-only commit"
@@ -55,16 +44,16 @@ pipeline {
                     stage('Install dependencies') {
                         sh '''
                             docker run --rm \
-                              -v "$WORKSPACE":/app \
+                              -v "$WORKSPACE/jenkins-ci-lab":/app \
                               -w /app \
-                              node:20-alpine npm install
+                              node:20-alpine sh -c "ls -l /app && npm install"
                         '''
                     }
 
                     stage('Test') {
                         sh '''
                             docker run --rm \
-                              -v "$WORKSPACE":/app \
+                              -v "$WORKSPACE/jenkins-ci-lab":/app \
                               -w /app \
                               node:20-alpine npm test
                         '''
@@ -85,8 +74,7 @@ pipeline {
                             passwordVariable: 'DOCKERHUB_TOKEN'
                         )]) {
                             sh '''
-                                echo "$DOCKERHUB_TOKEN" | docker login \
-                                  -u "$DOCKERHUB_USERNAME" --password-stdin
+                                echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
                                 docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
                                 docker push ${DOCKER_IMAGE}:latest
                                 docker logout
@@ -96,9 +84,7 @@ pipeline {
 
                     stage('Update Kubernetes manifest') {
                         sh '''
-                            sed -i \
-                              "s|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${BUILD_NUMBER}|" \
-                              ${DEPLOYMENT_FILE}
+                            sed -i "s|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${BUILD_NUMBER}|" ${DEPLOYMENT_FILE}
                             grep "image:" ${DEPLOYMENT_FILE}
                         '''
                     }
